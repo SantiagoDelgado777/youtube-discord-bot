@@ -30,6 +30,7 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git pull origin main --rebase
           git add last_video.txt
-          git commit -m "update: actualiza id del último video" || exit 0
+          git commit -m "update: actualiza id del ultimo video" || exit 0
           git push
