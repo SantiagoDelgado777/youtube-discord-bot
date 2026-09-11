@@ -1,0 +1,35 @@
+name: Monitor de YouTube a Discord
+
+on:
+  schedule:
+    # Revisa automáticamente cada 15 minutos
+    - cron: '*/15 * * * *'
+  workflow_dispatch: # Permite ejecutarlo manualmente cuando quieras
+
+jobs:
+  check-youtube:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Ejecutar script de verificación
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python bot.py
+
+      - name: Guardar estado del último vídeo publicado
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add last_video.txt
+          git commit -m "update: actualiza id del último video" || exit 0
+          git push
