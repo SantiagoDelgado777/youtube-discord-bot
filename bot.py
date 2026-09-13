@@ -1,40 +1,50 @@
-import feedparser
-import random
 import os
+import re
+import random
 import requests
 
-# Feed RSS directo del canal @SantiagoDelgadoGames
-RSS_URL = "https://www.youtube.com/feeds/videos.xml?user=SantiagoDelgadoGames"
+HANDLE = "SantiagoDelgadoGames"
+URL_VIDEOS = f"https://www.youtube.com/@{HANDLE}/videos"
+
+def obtener_videos_canal():
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "es-ES,es;q=0.9"
+    }
+
+    try:
+        response = requests.get(URL_VIDEOS, headers=headers, timeout=15)
+        response.raise_for_status()
+    except Exception as e:
+        print(f"Error al conectar con el canal: {e}")
+        return []
+
+    # Extraer los IDs de los videos pertenecientes al canal
+    video_ids = re.findall(r'"videoId":"([a-zA-Z0-9_-]{11})"', response.text)
+    
+    # Filtrar duplicados
+    return list(dict.fromkeys(video_ids))
 
 def publicar_video_azar():
-    feed = feedparser.parse(RSS_URL)
-    
-    # Si por alguna razón la URL por user no devuelve la lista, intentamos con el ID directo
-    if not feed.entries:
-        # Reemplazar con el ID que obtengas al presionar Ctrl+U en tu canal
-        CHANNEL_ID = "UCYwFUpXk4aI5D4iK-s6mptw" 
-        feed = feedparser.parse(f"https://www.youtube.com/feeds/videos.xml?channel_id={CHANNEL_ID}")
+    print(f"Buscando videos en @{HANDLE}...")
+    video_ids = obtener_videos_canal()
 
-    if not feed.entries:
-        print("No se encontraron videos en el feed.")
+    if not video_ids:
+        print("No se pudieron extraer videos del canal.")
         return
 
-    # Selecciona un video al azar de TU canal
-    video = random.choice(feed.entries)
-    
-    titulo = video.title
-    link = video.link
+    video_id_elegido = random.choice(video_ids)
+    link_video = f"https://www.youtube.com/watch?v={video_id_elegido}"
 
-    mensaje = f"🎬 ¡Recomendado del canal!\n\n**{titulo}**\n{link}"
-    print(f"Video de @SantiagoDelgadoGames seleccionado: {titulo} -> {link}")
+    mensaje = f"🎬 ¡Recomendado del canal @{HANDLE}!\n\n{link_video}"
+    print(f"Video seleccionado: {link_video}")
 
-    # Enviar a Discord
     webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
     if webhook_url:
-        respuesta = requests.post(webhook_url, json={"content": mensaje})
-        print(f"Estado del envío a Discord: {respuesta.status_code}")
+        res = requests.post(webhook_url, json={"content": mensaje})
+        print(f"Respuesta de Discord Webhook: {res.status_code}")
     else:
-        print("Aviso: DISCORD_WEBHOOK_URL no configurada en local (se usará en GitHub Actions).")
+        print("Aviso: DISCORD_WEBHOOK_URL no configurada en entorno local.")
 
 if __name__ == "__main__":
     publicar_video_azar()
