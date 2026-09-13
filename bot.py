@@ -1,58 +1,35 @@
+import feedparser
+import random
 import os
 import requests
-import feedparser
 
-# ID de tu canal de YouTube
-YOUTUBE_CHANNEL_ID = "UC-cR5jY0-O3hD7yJ7f_yBkg"
-DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
+# Reemplaza con el ID de tu canal de YouTube
+CHANNEL_ID = "UC_x5XG1OV2P6uZZ5FSM9Ttw"  # Reemplaza si es necesario
+RSS_URL = f"https://www.youtube.com/feeds/videos.xml?channel_id={CHANNEL_ID}"
 
-RSS_URL = f"https://www.youtube.com/feeds/videos.xml?channel_id={YOUTUBE_CHANNEL_ID}"
-LAST_VIDEO_FILE = "last_video.txt"
-
-def get_last_saved_id():
-    if os.path.exists(LAST_VIDEO_FILE):
-        with open(LAST_VIDEO_FILE, "r") as f:
-            return f.read().strip()
-    return ""
-
-def save_last_id(video_id):
-    with open(LAST_VIDEO_FILE, "w") as f:
-        f.write(video_id)
-
-def main():
-    if not DISCORD_WEBHOOK_URL:
-        print("Error: No se encontró la URL del Webhook de Discord.")
-        return
-
+def publicar_video_azar():
     feed = feedparser.parse(RSS_URL)
+    
     if not feed.entries:
-        print("No se encontraron vídeos en el feed RSS.")
+        print("No se pudieron obtener videos del feed.")
         return
 
-    latest_entry = feed.entries[0]
-    latest_id = latest_entry.yt_videoid
-    latest_title = latest_entry.title
-    latest_link = latest_entry.link
+    # Selecciona un video al azar del feed (largos, shorts, en vivo)
+    video = random.choice(feed.entries)
+    
+    titulo = video.title
+    link = video.link
 
-    last_id = get_last_saved_id()
+    mensaje = f"🎬 ¡Recomendado del canal!\n\n**{titulo}**\n{link}"
+    print(f"Publicando: {titulo} -> {link}")
 
-    # Si hay un vídeo nuevo que no se ha notificado previamente
-    if latest_id != last_id:
-        if last_id != "":
-            payload = {
-                "content": f"¡Nuevo vídeo en el canal! 🚀\n**{latest_title}**\n{latest_link}"
-            }
-            response = requests.post(DISCORD_WEBHOOK_URL, json=payload)
-            if response.status_code == 204:
-                print(f"Notificación enviada a Discord: {latest_title}")
-            else:
-                print(f"Error al enviar a Discord: {response.status_code}")
-        else:
-            print(f"Inicializado el registro con el vídeo actual: {latest_id}")
-        
-        save_last_id(latest_id)
+    # Enviar al Webhook de Discord
+    webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
+    if webhook_url:
+        respuesta = requests.post(webhook_url, json={"content": mensaje})
+        print(f"Estado del envío a Discord: {respuesta.status_code}")
     else:
-        print("No hay vídeos nuevos.")
+        print("Aviso: DISCORD_WEBHOOK_URL no está configurada localmente (se usará en GitHub Actions).")
 
 if __name__ == "__main__":
-    main()
+    publicar_video_azar()
